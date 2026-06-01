@@ -6,15 +6,16 @@ public class MousePosManager : MonoBehaviour
 
     [SerializeField] private bool resetWorldOnScreen;
 
-    [SerializeField] private Transform placeableMin;
-    [SerializeField] private Transform placeableMax;
-
     public enum CursorState
     {
         Move, Place, Delete
     }
-
     [SerializeField] private CursorState cursorState;
+
+    [SerializeField] private Transform placeableMin;
+    [SerializeField] private Transform placeableMax;
+
+    [SerializeField] private Transform currentSelectionViewer;
 
     [Header("Set automatically")]
     [SerializeField] private Vector2 blockPlaceMin;
@@ -24,13 +25,22 @@ public class MousePosManager : MonoBehaviour
 
     [SerializeField] private Vector3 oldMovePos;
 
-    [SerializeField] private Transform selectedObj;
-
-    [SerializeField] private Transform currentSelectionViewer;
-
+    [SerializeField] private PlaceableBlock selectedObj;
 
     [SerializeField] private Vector2 worldOnScreenMin;
     [SerializeField] private Vector2 worldOnScreenMax;
+
+
+    public static MousePosManager Instance;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else Destroy(this);
+    }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -48,29 +58,89 @@ public class MousePosManager : MonoBehaviour
         Vector3 MTW = GetMouseToWorld();
 
         // Inputs
-        CheckInput();
-
-        /*if (Input.GetMouseButton(0))
-        {
-            RaycastHit hitInfo;
-            if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
-            {
-                if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
-                {
-                    selectedObj = hitInfo.transform;
-                }
-            }
-        }
-        if (Input.GetMouseButton(1))
-        {
-            selectedObj = null;
-            
-        }*/
-
+        CheckInput(MTW);
 
         // Setting position
-        pos.x = Mathf.Round(MTW.x);
-        pos.y = Mathf.Round(MTW.y);
+        SetMouseWorldPos(MTW);
+
+    }
+
+    private void CheckInput(Vector3 pMTW)
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            switch (cursorState)
+            {
+                case CursorState.Move: CheckMoveStateInput(pMTW); break;
+                case CursorState.Place: CheckPlaceStateInput(); break;
+                case CursorState.Delete: CheckDeleteStateInput(pMTW); break;
+            }
+        }
+
+    }
+
+    
+    private void CheckMoveStateInput(Vector3 pMTW)
+    {
+        // Already holding something: Place it down
+        if (selectedObj != null)
+        {
+            // If at the view thing: Place at old pos
+            if (selectedObj.transform.position == currentSelectionViewer.position)
+            {
+                selectedObj.transform.position = oldMovePos;
+            }
+            selectedObj = null;
+            return;
+        }
+
+        // Not holding something: Try to pick something up
+        PlaceableBlock raycastHitPlaceable = DoRaycast(pMTW);
+        if (raycastHitPlaceable != null)
+        {
+            selectedObj = raycastHitPlaceable;
+            oldMovePos = selectedObj.transform.position;
+        }
+
+    }
+    private void CheckPlaceStateInput()
+    {
+        // If PLACE and obj is not at the view thing: Place a copy
+        if (selectedObj != null && selectedObj.transform.position != currentSelectionViewer.position)
+        {
+            Instantiate(selectedObj, pos, Quaternion.identity);
+            return;
+        }
+    }
+    private void CheckDeleteStateInput(Vector3 pMTW)
+    {
+        PlaceableBlock raycastHitPlaceable = DoRaycast(pMTW);
+        if (raycastHitPlaceable != null && !raycastHitPlaceable.isIndestructible)
+        {
+            Destroy(raycastHitPlaceable.gameObject);
+        }
+
+    }
+    private PlaceableBlock DoRaycast(Vector3 pPos)
+    {
+        RaycastHit hitInfo;
+        if (Physics.Raycast(pPos - Vector3.forward, Vector3.forward, out hitInfo))
+        {
+            PlaceableBlock pb;
+            if (hitInfo.transform != null && hitInfo.transform.TryGetComponent<PlaceableBlock>(out pb))
+            {
+                return pb;
+                //return hitInfo.transform;
+            }
+        }
+
+        return null;
+    }
+    
+    private void SetMouseWorldPos(Vector3 pMTW)
+    {
+        pos.x = Mathf.Round(pMTW.x);
+        pos.y = Mathf.Round(pMTW.y);
 
 
         if (pos.x < blockPlaceMin.x || pos.x > blockPlaceMax.x ||
@@ -80,104 +150,12 @@ public class MousePosManager : MonoBehaviour
         }
 
 
-        if (selectedObj != null) 
-        {
-            selectedObj.position = pos;
-        }
-
-    }
-
-    private void CheckInput()
-    {
-        Vector3 MTW = GetMouseToWorld();
-
-        if (Input.GetMouseButtonDown(0))
-        {
-            // If MOVE and Holding obj: Place it 
-            if (cursorState == CursorState.Move && selectedObj != null)
-            {
-                // If at the view thing: Place at old pos
-                if (selectedObj.position == currentSelectionViewer.position)
-                {
-                    selectedObj.position = oldMovePos;
-                }
-                selectedObj = null;
-                return;
-            }
-
-            // If PLACE and obj is not at the view thing: Place a copy
-            if (cursorState == CursorState.Place && selectedObj.position != currentSelectionViewer.position)
-            {
-                Instantiate(selectedObj, pos, Quaternion.identity);
-                return;
-            }
-
-            RaycastHit hitInfo;
-            if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
-            {
-                if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
-                {
-
-                    if (cursorState == CursorState.Move)
-                    {
-                        selectedObj = hitInfo.transform;
-                        oldMovePos = selectedObj.position;
-                    }
-                    if (cursorState == CursorState.Delete)
-                    {
-                        Destroy(hitInfo.transform.gameObject);
-                    }
-
-                }
-            }
-        }
-
-    }
-
-    /*
-    private void CheckMoveStateInput()
-    {
-        Vector3 MTW = GetMouseToWorld();
-
         if (selectedObj != null)
         {
-            // If at the view thing: Place at old pos
-            if (selectedObj.position == currentSelectionViewer.position)
-            {
-                selectedObj.position = oldMovePos;
-            }
-            selectedObj = null;
-            return;
-        }
-
-        RaycastHit hitInfo;
-        if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
-        {
-            if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
-            {
-                selectedObj = hitInfo.transform;
-                oldMovePos = selectedObj.position;
-                
-            }
+            selectedObj.transform.position = pos;
         }
     }
 
-    private Transform DoRaycast(Vector3 pPos)
-    {
-        RaycastHit hitInfo;
-        if (Physics.Raycast(pPos - Vector3.forward, Vector3.forward, out hitInfo))
-        {
-            if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
-            {
-                selectedObj = hitInfo.transform;
-                oldMovePos = selectedObj.position;
-
-            }
-        }
-
-        return null;
-    }
-    /**/
 
     public void SetCursorState(CursorState pCursorState)
     {
@@ -203,12 +181,15 @@ public class MousePosManager : MonoBehaviour
         {
             if (cursorState == CursorState.Move)
             {
-                selectedObj.position = oldMovePos;
+                // Holding something: Place back at old position
+                selectedObj.transform.position = oldMovePos;
                 selectedObj = null;
             }
             else
             {
+                // Holding a placeable block: Remove it
                 Destroy(selectedObj.gameObject);
+                selectedObj = null;
             }
         }
         
@@ -217,7 +198,7 @@ public class MousePosManager : MonoBehaviour
 
         if (pPlaceableObj != null) 
         {
-            selectedObj = Instantiate(pPlaceableObj, pos, Quaternion.identity).transform;
+            selectedObj = Instantiate(pPlaceableObj.gameObject, pos, Quaternion.identity).GetComponent<PlaceableBlock>();
         }
     }
 

@@ -2,15 +2,6 @@ using UnityEngine;
 
 public class PlaceableBlock : MonoBehaviour
 {
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public bool isIndestructible;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }
