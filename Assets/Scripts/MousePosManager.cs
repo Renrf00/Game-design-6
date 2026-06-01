@@ -1,3 +1,4 @@
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class MousePosManager : MonoBehaviour
@@ -8,11 +9,20 @@ public class MousePosManager : MonoBehaviour
     [SerializeField] private Transform placeableMin;
     [SerializeField] private Transform placeableMax;
 
+    public enum CursorState
+    {
+        Move, Place, Delete
+    }
+
+    [SerializeField] private CursorState cursorState;
+
     [Header("Set automatically")]
     [SerializeField] private Vector2 blockPlaceMin;
     [SerializeField] private Vector2 blockPlaceMax;
 
     [SerializeField] private Vector3 pos;
+
+    [SerializeField] private Vector3 oldMovePos;
 
     [SerializeField] private Transform selectedObj;
 
@@ -38,7 +48,9 @@ public class MousePosManager : MonoBehaviour
         Vector3 MTW = GetMouseToWorld();
 
         // Inputs
-        if (Input.GetMouseButton(0))
+        CheckInput();
+
+        /*if (Input.GetMouseButton(0))
         {
             RaycastHit hitInfo;
             if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
@@ -53,7 +65,7 @@ public class MousePosManager : MonoBehaviour
         {
             selectedObj = null;
             
-        }
+        }*/
 
 
         // Setting position
@@ -73,6 +85,140 @@ public class MousePosManager : MonoBehaviour
             selectedObj.position = pos;
         }
 
+    }
+
+    private void CheckInput()
+    {
+        Vector3 MTW = GetMouseToWorld();
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            // If MOVE and Holding obj: Place it 
+            if (cursorState == CursorState.Move && selectedObj != null)
+            {
+                // If at the view thing: Place at old pos
+                if (selectedObj.position == currentSelectionViewer.position)
+                {
+                    selectedObj.position = oldMovePos;
+                }
+                selectedObj = null;
+                return;
+            }
+
+            // If PLACE and obj is not at the view thing: Place a copy
+            if (cursorState == CursorState.Place && selectedObj.position != currentSelectionViewer.position)
+            {
+                Instantiate(selectedObj, pos, Quaternion.identity);
+                return;
+            }
+
+            RaycastHit hitInfo;
+            if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
+            {
+                if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
+                {
+
+                    if (cursorState == CursorState.Move)
+                    {
+                        selectedObj = hitInfo.transform;
+                        oldMovePos = selectedObj.position;
+                    }
+                    if (cursorState == CursorState.Delete)
+                    {
+                        Destroy(hitInfo.transform.gameObject);
+                    }
+
+                }
+            }
+        }
+
+    }
+
+    /*
+    private void CheckMoveStateInput()
+    {
+        Vector3 MTW = GetMouseToWorld();
+
+        if (selectedObj != null)
+        {
+            // If at the view thing: Place at old pos
+            if (selectedObj.position == currentSelectionViewer.position)
+            {
+                selectedObj.position = oldMovePos;
+            }
+            selectedObj = null;
+            return;
+        }
+
+        RaycastHit hitInfo;
+        if (Physics.Raycast(MTW - Vector3.forward, Vector3.forward, out hitInfo))
+        {
+            if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
+            {
+                selectedObj = hitInfo.transform;
+                oldMovePos = selectedObj.position;
+                
+            }
+        }
+    }
+
+    private Transform DoRaycast(Vector3 pPos)
+    {
+        RaycastHit hitInfo;
+        if (Physics.Raycast(pPos - Vector3.forward, Vector3.forward, out hitInfo))
+        {
+            if (hitInfo.transform != null && hitInfo.transform.GetComponent<PlaceableBlock>() != null)
+            {
+                selectedObj = hitInfo.transform;
+                oldMovePos = selectedObj.position;
+
+            }
+        }
+
+        return null;
+    }
+    /**/
+
+    public void SetCursorState(CursorState pCursorState)
+    {
+        SetCursorState(pCursorState, null);
+    }
+
+    public void SetCursorStateMove()
+    {
+        SetCursorState(CursorState.Move);
+    }
+    public void SetCursorStatePlace(GameObject pPlaceableObj)
+    {
+        SetCursorState(CursorState.Place, pPlaceableObj);
+    }
+    public void SetCursorStateDelete()
+    {
+        SetCursorState(CursorState.Delete);
+    }
+
+    public void SetCursorState(CursorState pCursorState, GameObject pPlaceableObj)
+    {
+        if (selectedObj != null)
+        {
+            if (cursorState == CursorState.Move)
+            {
+                selectedObj.position = oldMovePos;
+                selectedObj = null;
+            }
+            else
+            {
+                Destroy(selectedObj.gameObject);
+            }
+        }
+        
+
+        cursorState = pCursorState;
+
+        if (pPlaceableObj != null) 
+        {
+            selectedObj = Instantiate(pPlaceableObj, pos, Quaternion.identity).transform;
+        }
     }
 
     // Recalibrate the camera to make the mouse position match world position
