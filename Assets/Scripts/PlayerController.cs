@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -40,7 +39,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float coyoteJumpTimer;
     [SerializeField] private bool canCoyoteJump;
     [SerializeField] private bool snapierMovement = false;
+    [SerializeField] private float minY = 0;
     private Dictionary<PowerUp, float> powerUpCooldowns = new();
+
 
     private void Start()
     {
@@ -51,6 +52,11 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (transform.position.y < minY)
+        {
+            MousePosManager.Instance.SetCursorState(MousePosManager.CursorState.Play);
+        }
+
         foreach (PowerUp powerUp in new List<PowerUp>(powerUpCooldowns.Keys))
         {
             if (powerUpCooldowns[powerUp] > 0)

@@ -8,7 +8,7 @@ public class MousePosManager : MonoBehaviour
 
     public enum CursorState
     {
-        Move, Place, Delete
+        Move, Place, Delete, Play
     }
     [SerializeField] private CursorState cursorState;
 
@@ -24,6 +24,7 @@ public class MousePosManager : MonoBehaviour
     [SerializeField] private Vector3 pos;
 
     [SerializeField] private Vector3 oldMovePos;
+    [SerializeField] private Vector3 oldPlayerPos;
 
     [SerializeField] private PlaceableBlock selectedObj;
 
@@ -46,6 +47,7 @@ public class MousePosManager : MonoBehaviour
     void Start()
     {
         ResetWorldOnScreen();
+        oldPlayerPos = GameObject.FindGameObjectWithTag("Player").transform.position;
     }
 
     // Update is called once per frame
@@ -79,7 +81,7 @@ public class MousePosManager : MonoBehaviour
 
     }
 
-    
+
     private void CheckMoveStateInput(Vector3 pMTW)
     {
         // Already holding something: Place it down
@@ -89,6 +91,10 @@ public class MousePosManager : MonoBehaviour
             if (selectedObj.transform.position == currentSelectionViewer.position)
             {
                 selectedObj.transform.position = oldMovePos;
+            }
+            if (selectedObj.tag == "Player")
+            {
+                oldPlayerPos = selectedObj.transform.position;
             }
             selectedObj = null;
             return;
@@ -136,7 +142,7 @@ public class MousePosManager : MonoBehaviour
 
         return null;
     }
-    
+
     private void SetMouseWorldPos(Vector3 pMTW)
     {
         pos.x = Mathf.Round(pMTW.x);
@@ -156,7 +162,10 @@ public class MousePosManager : MonoBehaviour
         }
     }
 
-
+    public CursorState GetCursorState()
+    {
+        return cursorState;
+    }
     public void SetCursorState(CursorState pCursorState)
     {
         SetCursorState(pCursorState, null);
@@ -173,6 +182,10 @@ public class MousePosManager : MonoBehaviour
     public void SetCursorStateDelete()
     {
         SetCursorState(CursorState.Delete);
+    }
+    public void SetCursorStatePlay()
+    {
+        SetCursorState(CursorState.Play);
     }
 
     public void SetCursorState(CursorState pCursorState, GameObject pPlaceableObj)
@@ -192,13 +205,22 @@ public class MousePosManager : MonoBehaviour
                 selectedObj = null;
             }
         }
-        
+
 
         cursorState = pCursorState;
 
-        if (pPlaceableObj != null) 
+        if (pPlaceableObj != null)
         {
             selectedObj = Instantiate(pPlaceableObj.gameObject, pos, Quaternion.identity).GetComponent<PlaceableBlock>();
+        }
+
+        if (pCursorState == CursorState.Play)
+        {
+            StartPlayMode();
+        }
+        else
+        {
+            ResetPlayerPosition();
         }
     }
 
@@ -225,5 +247,23 @@ public class MousePosManager : MonoBehaviour
         float xPos = Mathf.Lerp(worldOnScreenMin.x, worldOnScreenMax.x, Input.mousePosition.x / Screen.width);
         float yPos = Mathf.Lerp(worldOnScreenMin.y, worldOnScreenMax.y, Input.mousePosition.y / Screen.height);
         return new Vector3(xPos, yPos, 0);
+    }
+
+    private void StartPlayMode()
+    {
+        PlayerController player = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerController>();
+        player.transform.position = oldPlayerPos;
+        player.GetComponent<Rigidbody>().useGravity = true;
+        player.GetComponent<Rigidbody>().isKinematic = false;
+        player.enabled = true;
+    }
+
+    private void ResetPlayerPosition()
+    {
+        PlayerController player = GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerController>();
+        player.transform.position = oldPlayerPos;
+        player.GetComponent<Rigidbody>().useGravity = false;
+        player.GetComponent<Rigidbody>().isKinematic = true;
+        player.enabled = false;
     }
 }
