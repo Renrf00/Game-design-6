@@ -27,6 +27,7 @@ public class MousePosManager : MonoBehaviour
     [SerializeField] private Vector3 oldPlayerPos;
 
     [SerializeField] private PlaceableBlock selectedObj;
+    [SerializeField] private GameObject selectedTextButton;
 
     [SerializeField] private Vector2 worldOnScreenMin;
     [SerializeField] private Vector2 worldOnScreenMax;
@@ -206,12 +207,25 @@ public class MousePosManager : MonoBehaviour
             }
         }
 
+        if (selectedTextButton != null)
+        {
+            Destroy(selectedTextButton);
+            selectedTextButton = null;
+        }
+
 
         cursorState = pCursorState;
 
         if (pPlaceableObj != null)
         {
-            selectedObj = Instantiate(pPlaceableObj.gameObject, pos, Quaternion.identity).GetComponent<PlaceableBlock>();
+            if (pCursorState == CursorState.Place)
+            {
+                selectedObj = Instantiate(pPlaceableObj.gameObject, pos, Quaternion.identity).GetComponent<PlaceableBlock>();
+            }
+            else
+            {
+                selectedTextButton = Instantiate(pPlaceableObj.gameObject, pos, Quaternion.identity);
+            }
         }
 
         if (pCursorState == CursorState.Play)
